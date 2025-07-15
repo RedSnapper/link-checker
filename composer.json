@@ -1,0 +1,55 @@
+{
+    "name": "rs/link-check",
+    "description": "My awesome package",
+    "keywords": [
+        "rs",
+        "link-check"
+    ],
+    "homepage": "https://github.com/rs/link-check",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Param Dhaliwal",
+            "email": "param@redsnapper.net",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.3"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.24",
+        "orchestra/testbench": "^10.4",
+        "pestphp/pest": "^3.8",
+        "pestphp/pest-plugin-laravel": "^3.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "RedSnapper\\LinkCheck\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "RedSnapper\\LinkCheck\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "RedSnapper\\LinkCheck\\LinkCheckServiceProvider"
+            ]
+        }
+    }
+}
