@@ -1,9 +1,13 @@
 <?php
 
+use Aws\Lambda\LambdaClient;
+use Aws\Result;
+use GuzzleHttp\Psr7\Stream;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use RedSnapper\LinkChecker\Contracts\LinkCheckerInterface;
 use RedSnapper\LinkChecker\LinkCheckResult;
-use RedSnapper\LinkChecker\UrlChecker;
+use Mockery as m;
 
 
 it('checks a successful HTML page and extracts its title', function () {
@@ -15,7 +19,7 @@ it('checks a successful HTML page and extracts its title', function () {
         $url => Http::response($htmlContent, 200, ['Content-Type' => 'text/html; charset=utf-8']),
     ]);
 
-    $checker = new UrlChecker();
+    $checker = app(LinkCheckerInterface::class);
 
     // Act
     $results = $checker->check([$url]);
@@ -55,7 +59,7 @@ test('it handles redirects correctly', function () {
     ]);
 
 
-    $checker = app(UrlChecker::class);
+    $checker = app(LinkCheckerInterface::class);
 
     // Act
     $results = $checker->check([$originalUrl]);
@@ -86,7 +90,7 @@ test('it handles client errors correctly', function () {
         $url => Http::response(null, 404),
     ]);
 
-    $checker = new UrlChecker();
+    $checker = app(LinkCheckerInterface::class);
     $results = $checker->check([$url]);
 
     expect($results)->toHaveCount(1)
@@ -106,7 +110,7 @@ test('it handles server errors correctly', function () {
         $url => Http::response(null, 500),
     ]);
 
-    $checker = new UrlChecker();
+    $checker = app(LinkCheckerInterface::class);
     $results = $checker->check([$url]);
 
     expect($results)->toHaveCount(1)
@@ -125,7 +129,7 @@ test('it handles connection errors correctly', function () {
         $url => Http::failedConnection()
     ]);
 
-    $checker = new UrlChecker();
+    $checker = app(LinkCheckerInterface::class);
     $results = $checker->check([$url]);
 
     expect($results)->toHaveCount(1)
@@ -143,7 +147,7 @@ test('it can check multiple URLs in parallel', function () {
         'example.net/not-found' => Http::response(null, 404),
     ]);
 
-    $checker = new UrlChecker();
+    $checker = app(LinkCheckerInterface::class);
     $results = $checker->check([
         'https://example.com',
         'https://example.org',
@@ -179,7 +183,7 @@ it('applies custom options for timeout, connect timeout, retries, retry delay', 
         'referrer' => 'https://my-app.com',
     ];
 
-    $checker = app(UrlChecker::class);
+    $checker = app(LinkCheckerInterface::class);
 
     // Act
     $results = $checker->check([$url], $customOptions);
@@ -211,7 +215,7 @@ it('handles malformed HTML gracefully and returns null for title', function () {
         $url => Http::response($malformedHtml, 200, ['Content-Type' => 'text/html']),
     ]);
 
-    $checker = app(UrlChecker::class);
+    $checker = app(LinkCheckerInterface::class);
 
     // Act
     $results = $checker->check([$url]);
@@ -225,3 +229,47 @@ it('handles malformed HTML gracefully and returns null for title', function () {
     expect($result->title)->toBe('Valid Title'); // simple_html_dom should still find it
 });
 
+it('can call a lambda function to extract the title', function () {
+    // 1. Arrange: Configure the package to use the PDF extractor
+    config()->set('link-checker.pdf.lambda_arn', 'arn:aws:lambda:us-east-1:123456789012:function:test-function');
+
+    // 2. Arrange: Mock the LambdaClient
+    $this->mock(LambdaClient::class, function ($mock) {
+        // This is the expected response from our Python Lambda
+        $lambdaResponsePayload = [
+            'statusCode' => 200,
+            'body' => json_encode([
+                'status' => 'success',
+                'title' => 'My Awesome PDF Title'
+            ])
+        ];
+
+        // We need to build a mock AWS Result object to return
+        $stream = m::mock(Stream::class);
+        $stream->shouldReceive('getContents')->andReturn(json_encode($lambdaResponsePayload));
+        $mockAwsResult = m::mock(Result::class);
+        $mockAwsResult->shouldReceive('get')->with('Payload')->andReturn($stream);
+
+        // Tell the mock client to expect a call to 'invoke' and return our mock result
+        $mock->shouldReceive('invoke')
+            ->once()
+            ->andReturn($mockAwsResult);
+    });
+
+    // 3. Arrange: Fake the initial HTTP response to identify the URL as a PDF
+    $pdfUrl = 'https://example.com/document.pdf';
+    Http::fake([
+        $pdfUrl => Http::response(null, 200, ['Content-Type' => 'application/pdf']),
+    ]);
+
+    // 4. Act: Run the checker
+    $checker = app(LinkCheckerInterface::class);
+    $results = $checker->check([$pdfUrl]);
+
+    // 5. Assert
+    expect($results)->toHaveCount(1);
+    $result = $results->first();
+
+    expect($result->status)->toBe('ok')
+        ->and($result->title)->toBe('My Awesome PDF Title');
+});

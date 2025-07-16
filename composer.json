@@ -17,6 +17,7 @@
     ],
     "require": {
         "php": "^8.3",
+        "aws/aws-sdk-php": "^3.350",
         "voku/simple_html_dom": "^4.8"
     },
     "require-dev": {
@@ -50,7 +51,10 @@
         "laravel": {
             "providers": [
                 "LinkCheckerServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "LinkChecker": "RedSnapper\\LinkChecker\\Facades\\LinkChecker"
+            }
         }
     }
 }

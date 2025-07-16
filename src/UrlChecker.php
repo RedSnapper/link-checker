@@ -7,10 +7,9 @@ use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use RedSnapper\LinkChecker\Contracts\LinkCheckerInterface;
+use RedSnapper\LinkChecker\Extractor\TitleExtractorManager;
 use Throwable;
-use voku\helper\HtmlDomParser;
 
 class UrlChecker implements LinkCheckerInterface
 {
@@ -31,13 +30,14 @@ class UrlChecker implements LinkCheckerInterface
         'DNT' => '1',
     ];
 
-    public function __construct(array $config = []) {
+    public function __construct(array $config = [], protected TitleExtractorManager $titleExtractorManager)
+    {
 
         $this->timeout = $config['timeout'] ?? 30;
         $this->connectTimeout = $config['connect_timeout'] ?? 10;
         $this->tries = $config['retries'] ?? 1;
         $this->retryDelay = $config['retry_delay'] ?? 100;
-        $this->defaultHeaders = array_merge($this->defaultHeaders,$config['default_headers'] ?? []);
+        $this->defaultHeaders = array_merge($this->defaultHeaders, $config['default_headers'] ?? []);
 
     }
 
@@ -59,7 +59,7 @@ class UrlChecker implements LinkCheckerInterface
         }
 
 
-        $responses = Http::pool(fn (Pool $pool) => array_map(fn ($url
+        $responses = Http::pool(fn(Pool $pool) => array_map(fn($url
         ) => $pool->withHeaders(array_filter($headers))
             ->connectTimeout($connectTimeout)
             ->timeout($timeout)
@@ -67,12 +67,11 @@ class UrlChecker implements LinkCheckerInterface
             ->get($url), $urls
         ));
 
-        return collect($responses)->map(fn ($response, $index) => $this->handleResponse($response, $urls[$index])
+        return collect($responses)->map(fn($response, $index) => $this->handleResponse($response, $urls[$index])
 
         );
 
     }
-
 
 
     protected function handleResponse($response, $url): LinkCheckResult
@@ -87,7 +86,7 @@ class UrlChecker implements LinkCheckerInterface
     private function handleHTTPResponse(Response $response, $url): LinkCheckResult
     {
 
-        $title = $response->successful() ? $this->getExtractedTitle($response) : null;
+        $title = $response->successful() ? $this->titleExtractorManager->extract($response, $url) : null;
         $errorMessage = null;
 
         if (!$response->successful()) { // If not 2xx
@@ -148,45 +147,5 @@ class UrlChecker implements LinkCheckerInterface
         return 'unknown';
     }
 
-    private function getExtractedTitle(Response $response)
-    {
-        if ($this->isHtmlResponse($response)) {
-            return $this->extractPageTitleFromHtml($response->body());
-        }
 
-    }
-
-    private function isHtmlResponse(Response $response): bool
-    {
-        $contentType = $response->header('Content-Type');
-
-        return str_contains(strtolower($contentType ?? ''), 'text/html');
-    }
-
-    private function extractPageTitleFromHtml(string $htmlContent): ?string
-    {
-        if (empty($htmlContent)) {
-            return null;
-        }
-
-
-        try {
-            $dom = HtmlDomParser::str_get_html($htmlContent);
-
-            $titleElement = $dom->find('title', 0); // Get the first title element
-
-            if ($titleElement) {
-                $title = $titleElement->text();
-
-                $title = Str::squish(html_entity_decode($title, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-
-                return $title !== '' ? $title : null;
-            }
-
-            return null;
-
-        } catch (Throwable $e) {
-            return null;
-        }
-    }
 }
