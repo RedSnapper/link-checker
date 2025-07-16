@@ -1,15 +1,15 @@
 <?php
 
-namespace RedSnapper\LinkCheck\Tests;
+namespace RedSnapper\LinkChecker\Tests;
 
-use RedSnapper\LinkCheck\LinkCheckServiceProvider;
+use RedSnapper\LinkChecker\LinkCheckerServiceProvider;
 
 class TestCase extends \Orchestra\Testbench\TestCase
 {
     protected function getPackageProviders($app)
     {
         return [
-            LinkCheckServiceProvider::class,
+            LinkCheckerServiceProvider::class,
         ];
     }
 }
