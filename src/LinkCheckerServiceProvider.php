@@ -64,7 +64,7 @@ class LinkCheckerServiceProvider extends ServiceProvider
 
         $this->app->singleton(LinkCheckerInterface::class, function ($app) {
             // Here, you explicitly pass the config to the Checker's constructor
-            return new UrlChecker(config('link-checker'),$app->make(TitleExtractorManager::class));
+            return new UrlChecker($app->make(TitleExtractorManager::class),config('link-checker'));
         });
 
         $this->app->alias(LinkCheckerInterface::class, 'link-checker');

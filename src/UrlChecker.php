@@ -30,7 +30,7 @@ class UrlChecker implements LinkCheckerInterface
         'DNT' => '1',
     ];
 
-    public function __construct(array $config = [], protected TitleExtractorManager $titleExtractorManager)
+    public function __construct(protected TitleExtractorManager $titleExtractorManager,array $config = [])
     {
 
         $this->timeout = $config['timeout'] ?? 30;

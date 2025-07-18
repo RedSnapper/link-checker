@@ -50,7 +50,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "LinkCheckerServiceProvider"
+                "RedSnapper\\LinkChecker\\LinkCheckerServiceProvider"
             ],
             "aliases": {
                 "LinkChecker": "RedSnapper\\LinkChecker\\Facades\\LinkChecker"
