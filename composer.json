@@ -1,11 +1,11 @@
 {
-    "name": "rs/link-check",
-    "description": "My awesome package",
+    "name": "rs/link-checker",
+    "description": "Visits links and checks they are still working. Also tries to return the title of html pages and pdfs.",
     "keywords": [
         "rs",
-        "link-check"
+        "link-checker"
     ],
-    "homepage": "https://github.com/rs/link-check",
+    "homepage": "https://github.com/rs/link-checker",
     "license": "MIT",
     "type": "library",
     "authors": [
