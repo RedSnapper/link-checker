@@ -16,7 +16,7 @@ class HtmlTitleExtractor implements TitleExtractorInterface
         return str_contains(strtolower($contentType ?? ''), 'text/html');
     }
 
-    public function extract(Response $response, string $originalUrl): ?string
+    public function extract(Response $response, string $originalUrl, array $options = []): ?string
     {
         $htmlContent = $response->body();
         if (empty($htmlContent)) {

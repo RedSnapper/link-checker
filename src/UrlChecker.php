@@ -58,6 +58,9 @@ class UrlChecker implements LinkCheckerInterface
             $headers['Referer'] = $options['referrer'];
         }
 
+        // Add the final headers back into the options to be passed down
+        $finalOptions = array_merge($options, ['headers' => $headers]);
+
 
         $responses = Http::pool(fn(Pool $pool) => array_map(fn($url
         ) => $pool->withHeaders(array_filter($headers))
@@ -67,26 +70,26 @@ class UrlChecker implements LinkCheckerInterface
             ->get($url), $urls
         ));
 
-        return collect($responses)->map(fn($response, $index) => $this->handleResponse($response, $urls[$index])
+        return collect($responses)->map(fn($response, $index) => $this->handleResponse($response, $urls[$index],$finalOptions)
 
         );
 
     }
 
 
-    protected function handleResponse($response, $url): LinkCheckResult
+    protected function handleResponse($response, $url, array $options = []): LinkCheckResult
     {
         if ($response instanceof Response) {
-            return $this->handleHTTPResponse($response, $url);
+            return $this->handleHTTPResponse($response, $url ,$options);
         }
 
         return $this->handleError($response, $url);
     }
 
-    private function handleHTTPResponse(Response $response, $url): LinkCheckResult
+    private function handleHTTPResponse(Response $response, $url, array $options = []): LinkCheckResult
     {
 
-        $title = $response->successful() ? $this->titleExtractorManager->extract($response, $url) : null;
+        $title = $response->successful() ? $this->titleExtractorManager->extract($response, $url ,$options) : null;
         $errorMessage = null;
 
         if (!$response->successful()) { // If not 2xx

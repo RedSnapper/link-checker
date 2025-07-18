@@ -233,8 +233,16 @@ it('can call a lambda function to extract the title', function () {
     // 1. Arrange: Configure the package to use the PDF extractor
     config()->set('link-checker.pdf.lambda_arn', 'arn:aws:lambda:us-east-1:123456789012:function:test-function');
 
+    // Set a default header to test merging logic
+    config()->set('link-checker.default_headers', ['User-Agent' => 'Test User Agent']);
+
+    // Define the final, merged headers we expect to be passed to the Lambda
+
     // 2. Arrange: Mock the LambdaClient
     $this->mock(LambdaClient::class, function ($mock) {
+
+
+
         // This is the expected response from our Python Lambda
         $lambdaResponsePayload = [
             'statusCode' => 200,
@@ -253,6 +261,22 @@ it('can call a lambda function to extract the title', function () {
         // Tell the mock client to expect a call to 'invoke' and return our mock result
         $mock->shouldReceive('invoke')
             ->once()
+            ->with(m::on(function ($arg) {
+                $payload = json_decode($arg['Payload'], true);
+
+                $expectedHeaders = [
+                    'User-Agent' => 'Test User Agent', // From default config
+                    'Referer' => 'https://my-test-page.com' // From options
+                ];
+
+                // Assert that the payload sent to Lambda contains the correct URL and merged headers
+                expect($payload['url'])->toBe('https://example.com/document.pdf')
+                    ->and($payload['headers']['User-Agent'])->toBe('Test User Agent')
+                    ->and($payload['headers']['X-Custom-Header'])->toBe('CustomValue')
+                    ->and($payload['headers']['Referer'])->toBe('https://my-test-page.com');
+
+                return true; // Return true to indicate the arguments are valid
+            }))
             ->andReturn($mockAwsResult);
     });
 
@@ -264,7 +288,10 @@ it('can call a lambda function to extract the title', function () {
 
     // 4. Act: Run the checker
     $checker = app(LinkCheckerInterface::class);
-    $results = $checker->check([$pdfUrl]);
+    $results = $checker->check([$pdfUrl],[
+        'referrer' => 'https://my-test-page.com',
+        'headers' => ['X-Custom-Header' => 'CustomValue']
+    ]);
 
     // 5. Assert
     expect($results)->toHaveCount(1);

@@ -20,13 +20,22 @@ class PdfTitleExtractor implements TitleExtractorInterface
         return str_contains(strtolower($contentType ?? ''), 'application/pdf');
     }
 
-    public function extract(Response $response, string $originalUrl): ?string
+    public function extract(Response $response, string $originalUrl, array $options = []): ?string
     {
+        if (empty($this->lambdaClient) || empty($this->config['lambda_arn'])) {
+            return null;
+        }
+
+        // Build the payload for the Lambda function, including the headers
+        $payload = [
+            'url' => $originalUrl,
+            'headers' => $options['headers'] ?? null,
+        ];
 
         try {
             $result = $this->lambdaClient->invoke([
                 'FunctionName' => $this->config['lambda_arn'],
-                'Payload' => json_encode(['url' => $originalUrl]),
+                'Payload' => json_encode(array_filter($payload)), // array_filter removes null headers
             ]);
 
             $payload = json_decode($result->get('Payload')->getContents(), true);

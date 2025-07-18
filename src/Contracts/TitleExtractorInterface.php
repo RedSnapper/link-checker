@@ -13,6 +13,8 @@ interface TitleExtractorInterface
 
     /**
      * Extract the title.
+     *
+     * @param array $options Optional data, may contain headers.
      */
-    public function extract(Response $response, string $originalUrl): ?string;
+    public function extract(Response $response, string $originalUrl, array $options = []): ?string;
 }

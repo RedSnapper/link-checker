@@ -15,11 +15,11 @@ class TitleExtractorManager
         $this->extractors = $extractors;
     }
 
-    public function extract(Response $response, string $originalUrl): ?string
+    public function extract(Response $response, string $originalUrl, array $options = []): ?string
     {
         foreach ($this->extractors as $extractor) {
             if ($extractor->supports($response)) {
-                return $extractor->extract($response, $originalUrl);
+                return $extractor->extract($response, $originalUrl, $options);
             }
         }
 
